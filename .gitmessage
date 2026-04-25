@@ -1,0 +1,12 @@
+docs: 用中文描述本次变更
+
+# 提交信息必须满足：
+# <prefix>: <中文描述>
+#
+# 示例：
+# docs: 添加火车油罐液体效果指南
+# asset: 添加火车油罐 Blender 源文件
+# vfx: 添加油罐液体效果资产结构
+#
+# 允许的 prefix：
+# asset, vfx, blender, docs, chore, feat, fix, refactor, test, build, ci, config, sync, release

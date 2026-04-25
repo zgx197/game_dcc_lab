@@ -1,0 +1,56 @@
+#!/usr/bin/env sh
+set -eu
+
+commit_msg_file="$1"
+
+python3 - "$commit_msg_file" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+message_path = Path(sys.argv[1])
+first_line = message_path.read_text(encoding="utf-8", errors="replace").splitlines()
+subject = first_line[0].strip() if first_line else ""
+
+allowed_prefixes = [
+    "asset",
+    "vfx",
+    "blender",
+    "docs",
+    "chore",
+    "feat",
+    "fix",
+    "refactor",
+    "test",
+    "build",
+    "ci",
+    "config",
+    "sync",
+    "release",
+]
+
+prefix_pattern = "|".join(re.escape(prefix) for prefix in allowed_prefixes)
+match = re.match(rf"^({prefix_pattern}):\s*(.+)$", subject)
+
+if not match:
+    print("提交信息格式错误。", file=sys.stderr)
+    print("", file=sys.stderr)
+    print("必须使用：<prefix>: <中文描述>", file=sys.stderr)
+    print("", file=sys.stderr)
+    print("允许的 prefix：", ", ".join(allowed_prefixes), file=sys.stderr)
+    print("示例：docs: 添加火车油罐液体效果指南", file=sys.stderr)
+    sys.exit(1)
+
+description = match.group(2).strip()
+if not re.search(r"[\u4e00-\u9fff]", description):
+    print("提交信息描述必须包含中文。", file=sys.stderr)
+    print("", file=sys.stderr)
+    print("示例：asset: 添加火车油罐 Blender 源文件", file=sys.stderr)
+    sys.exit(1)
+
+if len(description) < 4:
+    print("提交信息描述过短，请写清楚本次变更。", file=sys.stderr)
+    print("", file=sys.stderr)
+    print("示例：vfx: 添加油罐液体效果资产结构", file=sys.stderr)
+    sys.exit(1)
+PY
