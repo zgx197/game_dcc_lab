@@ -33,6 +33,7 @@
 文档入口：
 
 - [火车油罐容器液体效果 TA 设计与开发指南](docs/TRAIN_TANK_LIQUID_EFFECT_TA_GUIDE.md)
+- [Codex / Blender / MCP 工作约定](AGENTS.md)
 
 该文档覆盖：
 
@@ -98,6 +99,50 @@ train_oil/src/config/scene.json
 ```
 
 本仓库可以保存资产制作说明、配置草稿或导出片段，但游戏运行时应保持一个权威配置来源，避免运行时同时依赖多个配置仓库。
+
+## Codex 与 Blender 协作
+
+本仓库使用 `AGENTS.md` 记录 Codex 需要读取的本地工作约定，包括：
+
+- Blender 绝对路径和后台执行方式。
+- `bpy` 脚本的标准运行方式。
+- Codex 沙箱下运行 Blender 的注意事项。
+- Blender MCP addon 的本地路径。
+- Blender 侧 MCP 服务启动步骤。
+- Codex 侧 MCP server 配置方式。
+- Codex 通过 MCP 读取 Blender 场景、对象、视口截图和执行只读 `bpy` 检查的示例。
+
+当前验证过的 Blender 命令行路径：
+
+```text
+/Applications/Blender.app/Contents/MacOS/Blender
+```
+
+当前验证过的 Blender MCP addon 路径：
+
+```text
+/Users/admin/work/UGIT/tools/blender-mcp/addon.py
+```
+
+当前验证过的 Codex MCP 配置：
+
+```text
+name: blender
+transport: stdio
+command: /Users/admin/.local/bin/uvx
+args: blender-mcp
+cwd: /Users/admin/work/UGIT/game_dcc_lab
+```
+
+Blender 侧启动 MCP 后应显示：
+
+```text
+Running on port 9876
+```
+
+详细步骤和示例见：
+
+- [Codex / Blender / MCP 工作约定](AGENTS.md)
 
 ## Git 提交规则
 
