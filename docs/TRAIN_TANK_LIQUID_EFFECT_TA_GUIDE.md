@@ -50,6 +50,7 @@ const carriageBodyInstance = modelPool.acquire('sm_huoche_youtong_shen');
 3. 不在第一版中实现精确容器裁切。
 4. 不在第一版中实现多节油罐真实容量分摊。
 5. 不把油面尺寸、位置等静态调参硬编码到 TS 代码中。
+6. 不把方案做成只能服务火车油罐的一次性特效。
 
 ## 3. 核心思路
 
@@ -72,16 +73,67 @@ const carriageBodyInstance = modelPool.acquire('sm_huoche_youtong_shen');
 正式版可以升级为：
 
 ```text
-tank_root
-  ├── tank_shell_transparent
-  ├── oil_volume_inner
-  └── oil_surface_top
+container_root
+  ├── visual_mesh
+  ├── liquid_volume
+  └── liquid_surface
 ```
 
 其中：
 
-- `oil_volume_inner` 负责从侧面看到的油体厚度。
-- `oil_surface_top` 负责从上方看到的波纹、高光和流动。
+- `visual_mesh` 是容器本体，例如火车油罐、水桶、玻璃瓶或储液罐。
+- `liquid_volume` 负责从侧面看到的液体厚度，可选。
+- `liquid_surface` 负责从上方看到的波纹、高光和流动。
+
+### 3.1 通用液体容器效果
+
+虽然当前第一个落地对象是火车油罐，但技术设计不应做成 `TrainTankOnly` 的一次性方案。更合理的抽象是：
+
+```text
+通用 Liquid Container Effect
+  + 每个容器自己的 marker / bounds / tuning
+```
+
+用 Unity Prefab 类比：
+
+```text
+LiquidContainer prefab
+  ≈ Babylon 里的 LiquidContainerService
+
+Prefab 挂点
+  ≈ GLB 里的 liquid_socket / liquid_min_marker / liquid_max_marker
+
+Prefab 参数
+  ≈ scene.json 或 manifest 里的 liquid 配置
+
+Prefab 可见子对象
+  ≈ liquid_surface / liquid_volume mesh
+```
+
+通用的应该是系统能力，而不是每个容器的具体尺寸。不同容器仍然需要自己的适配数据：
+
+1. 液体中心在哪里。
+2. 最低液位在哪里。
+3. 最高液位在哪里。
+4. 液面宽度和长度是多少。
+5. 液面形状是圆形、椭圆、圆角矩形还是自定义 mesh。
+6. 高度轴使用哪个局部轴。
+7. 使用哪种液体材质预设，例如 `dark_oil`、`clear_water`、`gasoline`。
+
+因此推荐长期架构是：
+
+```text
+LiquidContainerService
+  通用运行时系统
+
+Liquid Container Protocol
+  通用 GLB 节点协议
+
+container-specific tuning
+  每个容器的尺寸、液位、材质和形状参数
+```
+
+火车油罐只是第一个使用这套协议的样板资产。
 
 ## 4. 三种实现等级
 
@@ -157,9 +209,9 @@ tank_root
 
 实现内容：
 
-1. 在油罐 root 下创建 `oil_surface` mesh。
+1. 在容器 root 下创建 `liquid_surface` mesh。
 2. 使用椭圆形或圆角矩形平面。
-3. 创建深色石油材质。
+3. 创建深色石油材质，可作为 `dark_oil` 材质预设。
 4. 把油面位置、缩放、最小液位、最大液位写入 `scene.json`。
 
 ### Phase 2：油量驱动液位
@@ -170,7 +222,7 @@ tank_root
 
 实现内容：
 
-1. 增加 `setTankOilFillRatio(ratio)` 之类的运行时接口。
+1. 增加 `setLiquidContainerFillRatio(containerId, ratio)` 之类的运行时接口。
 2. 在 `Game.initSystems()` 的 `oilInventorySystem.onOilChanged` 中同步液位。
 3. 对 ratio 做 clamp，保证范围为 `0..1`。
 4. 使用插值让液位变化更柔和。
@@ -197,24 +249,63 @@ tank_root
 
 实现内容：
 
-1. 在油罐内增加 `oil_volume_inner` mesh。
+1. 在容器内增加 `liquid_volume` mesh。
 2. 油体高度随 `fillRatio` 缩放。
 3. 顶部油面放在油体顶部。
 
 ## 6. 资产要求
 
-最理想的 GLB 层级结构：
+推荐先建立通用的 `Liquid Container Protocol v0.1`，再让火车油罐作为第一个实现该协议的资产。
+
+通用容器层级：
 
 ```text
-SM_火车油罐.glb
-  ├── tank_frame
-  ├── tank_shell
-  ├── tank_cap
-  ├── wheel_base
-  └── liquid_socket
+container_root
+  ├── visual_mesh
+  ├── liquid_socket
+  ├── liquid_min_marker
+  ├── liquid_max_marker
+  └── liquid_surface
 ```
 
-其中 `liquid_socket` 是一个空节点，用于标记液体中心。这样程序不需要猜油面位置，直接把油面挂到该节点下即可。
+节点说明：
+
+- `container_root`：容器资产根节点。可以是油罐、水桶、瓶子、锅或其他容器。
+- `visual_mesh`：原始可见模型。具体名字可以保持资产语义，例如 `SM_M_火车油罐`。
+- `liquid_socket`：液体系统中心挂点，用于建立液体局部空间。
+- `liquid_min_marker`：最低液位标记。
+- `liquid_max_marker`：最高液位标记。
+- `liquid_surface`：可见液面。第一版建议在 Blender 中创建，便于直接观察和调参。
+
+第一版必需节点：
+
+```text
+liquid_socket
+liquid_min_marker
+liquid_max_marker
+liquid_surface
+```
+
+后续可选扩展节点：
+
+```text
+liquid_volume
+liquid_clip_bounds
+liquid_flow_direction
+```
+
+当前火车油罐建议层级：
+
+```text
+container_train_tank_root
+  ├── SM_M_火车油罐
+  ├── liquid_socket
+  ├── liquid_min_marker
+  ├── liquid_max_marker
+  └── liquid_surface
+```
+
+注意：不要把协议节点命名成 `train_tank_liquid_socket`、`bucket_liquid_socket` 这类资产专用名字。不同资产的 root 可以不同，但协议节点名应保持一致。运行时只需要识别 `liquid_*` 协议节点，就可以复用同一套液体容器系统。
 
 如果无法修改 GLB，也可以用配置方式指定液体参数。
 
@@ -223,29 +314,35 @@ SM_火车油罐.glb
 ```json
 {
   "tuning": {
-    "trainTankLiquid": {
-      "enabled": true,
-      "surfaceLocalPosition": {
-        "x": 0,
-        "y": 1.45,
-        "z": 0
-      },
-      "surfaceLocalScale": {
-        "x": 1.15,
-        "y": 1,
-        "z": 2.8
-      },
-      "minFillY": 0.85,
-      "maxFillY": 1.72,
-      "surfaceColor": {
-        "r": 0.02,
-        "g": 0.025,
-        "b": 0.025
-      },
-      "highlightColor": {
-        "r": 0.32,
-        "g": 0.45,
-        "b": 0.5
+    "liquidContainers": {
+      "trainTank": {
+        "enabled": true,
+        "containerRootName": "container_train_tank_root",
+        "materialPreset": "dark_oil",
+        "surfaceShape": "ellipse",
+        "fillAxis": "localZ",
+        "surfaceLocalPosition": {
+          "x": 0,
+          "y": 0,
+          "z": 1.45
+        },
+        "surfaceLocalScale": {
+          "x": 1.15,
+          "y": 2.8,
+          "z": 1
+        },
+        "minFill": 0.15,
+        "maxFill": 0.85,
+        "surfaceColor": {
+          "r": 0.02,
+          "g": 0.025,
+          "b": 0.025
+        },
+        "highlightColor": {
+          "r": 0.32,
+          "g": 0.45,
+          "b": 0.5
+        }
       }
     }
   }
@@ -256,12 +353,16 @@ SM_火车油罐.glb
 
 - `surfaceLocalPosition`：油面在油罐局部空间中的基础位置。
 - `surfaceLocalScale`：油面局部缩放，用于把圆形拉成椭圆。
-- `minFillY`：空罐时的最低油面高度。
-- `maxFillY`：满罐时的最高油面高度。
+- `fillAxis`：液位高度使用的局部轴。Blender 中通常是 `localZ`，Babylon 运行时需要结合导出轴向确认。
+- `minFill`：空罐时的归一化最低液位。
+- `maxFill`：满罐时的归一化最高液位。
+- `materialPreset`：液体材质预设，例如 `dark_oil`。
 - `surfaceColor`：石油主体颜色。
 - `highlightColor`：高光颜色。
 
 按照项目规范，这些静态场景和调参数据应维护在 `scene.json`，不要硬编码到 TS/JS 代码里。
+
+如果第一版为了最小改动继续使用 `trainTankLiquid` 作为配置 key，也应把内部字段设计成可迁移到 `liquidContainers` 的通用结构，避免后续接入其他容器时重写系统。
 
 ## 7. Babylon 实现要点
 
@@ -271,7 +372,7 @@ SM_火车油罐.glb
 
 ```ts
 const oilSurface = MeshBuilder.CreateDisc(
-  'train_tank_oil_surface',
+  'liquid_surface',
   {
     radius: 1,
     tessellation: 64,
@@ -279,7 +380,7 @@ const oilSurface = MeshBuilder.CreateDisc(
   scene,
 );
 
-oilSurface.parent = tankRoot;
+oilSurface.parent = containerRoot;
 oilSurface.rotation.x = Math.PI / 2;
 oilSurface.position.set(0, 1.45, 0);
 oilSurface.scaling.set(1.15, 2.8, 1);
@@ -377,18 +478,18 @@ displayFillRatio += (targetFillRatio - displayFillRatio) * Math.min(1, deltaTime
 
 不建议把液体逻辑直接塞进 `Game.ts`。
 
-推荐新增服务：
+推荐新增通用服务：
 
 ```text
-src/services/TrainTankLiquidService.ts
+src/services/LiquidContainerService.ts
 ```
 
 职责：
 
 ```ts
-class TrainTankLiquidService {
-  attachToTank(root: TransformNode): TrainTankLiquidHandle;
-  setFillRatio(ratio: number): void;
+class LiquidContainerService {
+  attachToContainer(root: TransformNode, config: LiquidContainerConfig): LiquidContainerHandle;
+  setFillRatio(containerId: string, ratio: number): void;
   update(deltaTime: number, speedRatio: number): void;
   dispose(): void;
 }
@@ -396,15 +497,22 @@ class TrainTankLiquidService {
 
 其中：
 
-- `attachToTank()`：给某个油罐 root 创建并挂载油面。
+- `attachToContainer()`：给某个容器 root 创建或绑定液体表面。
 - `setFillRatio()`：设置目标油量比例。
 - `update()`：更新液位插值、时间 uniform、晃动强度。
 - `dispose()`：清理 mesh 和 material。
 
+火车油罐不应拥有一套完全独立的液体系统，而应作为 `LiquidContainerService` 的第一个配置实例：
+
+```text
+LiquidContainerService
+  └── trainTank config / preset
+```
+
 接入点：
 
 1. `SceneRailGameplaySystem.buildTankCarriage()`
-   - 运行时创建油罐车厢时 attach 液体。
+   - 运行时创建油罐车厢时 attach 对应容器液体。
 2. `Game.initSystems()`
    - `oilInventorySystem.onOilChanged` 中同步液位。
 3. `SceneRailGameplaySystem.update()`
@@ -435,7 +543,7 @@ this.oilInventorySystem.onOilChanged((newOil, _delta, capacity) => {
 this.oilInventorySystem.onOilChanged((newOil, _delta, capacity) => {
   this.cashBackpackOverlay?.setOil(newOil, capacity);
   const ratio = capacity <= 0 ? 0 : newOil / capacity;
-  this.sceneRailGameplaySystem?.setTankOilFillRatio(ratio);
+  this.sceneRailGameplaySystem?.setLiquidContainerFillRatio('trainTank', ratio);
 });
 ```
 
@@ -493,13 +601,13 @@ src/assets/textures/reference-water-normalmap.png
 第一版：
 
 ```text
-oilSurface.parent = tankRoot
+liquidSurface.parent = containerRoot
 ```
 
 后续高级版：
 
 ```text
-油面位置跟随 tankRoot
+油面位置跟随 containerRoot
 油面旋转尽量保持世界水平
 ```
 
@@ -509,7 +617,7 @@ oilSurface.parent = tankRoot
 
 自动化测试建议覆盖：
 
-1. `trainTankLiquid` 配置解析默认值。
+1. `liquidContainers` 配置解析默认值。
 2. `fillRatio` 被 clamp 到 `0..1`。
 3. 创建多节油罐车厢时，每节车厢都会创建液体 handle。
 4. `dispose()` 后 mesh/material 不泄漏。
@@ -532,8 +640,9 @@ oilSurface.parent = tankRoot
 2. 油面高度跟随油量变化。
 3. 油面有轻微高光或流动。
 4. 静态尺寸和颜色配置在 `scene.json`。
-5. 代码逻辑集中在独立服务或清晰的系统边界内。
+5. 代码逻辑集中在通用 `LiquidContainerService` 或清晰的系统边界内。
 6. 不破坏现有火车、交付、码头吊机流程。
+7. 火车油罐作为 `Liquid Container Effect` 的第一个样板资产，而不是一次性专用实现。
 
 一句话总结：
 
