@@ -1,0 +1,83 @@
+{
+  "asset": "SM_火车油罐_babylon_standard",
+  "source_blend_copy": "source/blender/train_tank/SM_火车油罐_babylon_standard.blend",
+  "glb": "exports/glb/SM_火车油罐_babylon_standard.glb",
+  "original_not_overwritten": "source/blender/train_tank/SM_火车油罐_liquid_setup.blend",
+  "runtime_target": "babylon",
+  "runtime_materials": {
+    "glass": "TankGlassMaterial",
+    "liquid": "LiquidOilMaterial"
+  },
+  "exported_objects": [
+    "container_train_tank_root",
+    "SM_M_火车油罐",
+    "liquid_surface",
+    "liquid_socket",
+    "liquid_min_marker",
+    "liquid_max_marker"
+  ],
+  "excluded_from_glb": [
+    "liquid_meniscus_rim"
+  ],
+  "root_metadata": {
+    "asset_role": "liquid_container_root",
+    "glass_babylon_material": "TankGlassMaterial",
+    "glass_preview_material": "M_油罐_SM_M_火车油罐",
+    "glass_preview_note": "Blender material is only a stable preview; Babylon owns final glass shader and transparency sorting",
+    "glass_runtime_target": "babylon",
+    "liquid_axis_forward": "local +Y",
+    "liquid_axis_right": "local +X",
+    "liquid_axis_up": "local +Z",
+    "liquid_babylon_material": "LiquidOilMaterial",
+    "liquid_base_z": 1.3794814948410594,
+    "liquid_container_type": "train_tank",
+    "liquid_default_fill_ratio": 0.6759999394416809,
+    "liquid_export_policy": "export mesh markers metadata; exclude debug and Blender handlers",
+    "liquid_fill_axis": "local +Z",
+    "liquid_max_marker_object": "liquid_max_marker",
+    "liquid_min_marker_object": "liquid_min_marker",
+    "liquid_runtime_implementation": "Babylon shader/material; Blender data is mesh+markers+metadata only",
+    "liquid_runtime_target": "babylon",
+    "liquid_schema_version": "1.0.0",
+    "liquid_socket_object": "liquid_socket",
+    "liquid_standard_state": true,
+    "liquid_surface_faces": 936,
+    "liquid_surface_object": "liquid_surface",
+    "liquid_surface_shape": "rounded_rect_grid",
+    "liquid_surface_topology": "row_column_grid_no_center_fan",
+    "liquid_surface_vertices": 1007
+  },
+  "liquid_surface": {
+    "vertices": 1007,
+    "faces": 936,
+    "face_vertex_counts": [
+      [
+        4,
+        936
+      ]
+    ],
+    "z_min": 1.379481554031372,
+    "z_max": 1.379481554031372,
+    "z_range": 0.0,
+    "metadata": {
+      "corner_radius": 0.21500003337860107,
+      "export_include": true,
+      "fill_ratio": 0.6759999394416809,
+      "half_length_y": 1.3642,
+      "half_width_x": 0.4573,
+      "liquid_base_local_z": 1.3794814948410594,
+      "liquid_fill_ratio": 0.6759999394416809,
+      "liquid_protocol_role": "liquid_surface",
+      "liquid_runtime_role": "surface_mesh_for_babylon_shader",
+      "liquid_surface_shape": "rounded_rect_grid",
+      "runtime_hint": "Babylon replaces placeholder material and drives height/slosh/flow at runtime",
+      "surface_shape": "rounded_rect_grid",
+      "surface_topology": "row_column_grid_no_center_fan"
+    }
+  },
+  "notes": [
+    "GLB exports mesh, marker empties, and custom properties via export_extras=True.",
+    "Babylon should replace placeholder materials with TankGlassMaterial and LiquidOilMaterial.",
+    "Blender debug/preview objects and handlers are intentionally excluded."
+  ]
+}
